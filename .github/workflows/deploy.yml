@@ -1,4 +1,4 @@
-name: Deploy Staging
+name: Build and Push Multi-Arch Docker Image
 
 on:
   push:
@@ -32,18 +32,13 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
-      - name: Set tag to latest
-        id: vars
-        run: echo "TAG=latest" >> $GITHUB_ENV
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Build Docker image
-        run: docker build -t ${{ env.IMAGE }}:${{ env.TAG }} .
-
-      - name: Tag Docker image for Artifact Registry
-        run: |
-          IMAGE_URI="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:${{ env.TAG }}"
-          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-          docker tag ${{ env.IMAGE }}:${{ env.TAG }} $IMAGE_URI
-
-      - name: Push Docker image
-        run: docker push $IMAGE_URI
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:latest
